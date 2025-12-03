@@ -1,0 +1,366 @@
+/* ================================
+   Base styles & design tokens
+   ================================ */
+
+:root {
+  /* Palette: dark flat, con acentos azules y naranjas */
+
+  /* Backgrounds */
+  --color-bg: #050816;
+  --color-bg-elevated: #0b1020;
+  --color-surface: #111827;
+  --color-surface-soft: #151b2b;
+  --color-surface-alt: #101827;
+
+  /* Borders & dividers */
+  --color-border-subtle: #1f2933;
+  --color-border-strong: #374151;
+
+  /* Text */
+  --color-text: #e5e7eb;
+  --color-text-muted: #9ca3af;
+  --color-text-soft: #6b7280;
+  --color-text-strong: #f9fafb;
+  --color-text-inverse: #020617;
+
+  /* Brand / primary accents */
+  --color-primary: #2f80ed;
+  --color-primary-soft: rgba(47, 128, 237, 0.14);
+  --color-primary-strong: #1e5fb1;
+
+  /* Semantic accents */
+  --color-accent: #f2994a;
+  --color-success: #27ae60;
+  --color-warning: #f2c94c;
+  --color-danger: #eb5757;
+
+  /* Algorithm colors (para usar después si quieres) */
+  --color-algo-bfs: #56ccf2;
+  --color-algo-dfs: #f2994a;
+  --color-algo-ucs: #9b51e0;
+  --color-algo-iddfs: #6fcf97;
+  --color-algo-astar: #2f80ed;
+
+  /* Shadows (suaves, opcionales) */
+  --shadow-soft: 0 18px 45px rgba(0, 0, 0, 0.35);
+  --shadow-subtle: 0 10px 30px rgba(0, 0, 0, 0.28);
+
+  /* Radii */
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-full: 999px;
+
+  /* Typography */
+  --font-sans:
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+
+  --font-size-xs: 0.75rem;
+  --font-size-sm: 0.85rem;
+  --font-size-md: 0.95rem;
+  --font-size-lg: 1.05rem;
+  --font-size-xl: 1.35rem;
+  --font-size-2xl: 1.75rem;
+
+  /* Spacing scale */
+  --space-2xs: 4px;
+  --space-xs: 8px;
+  --space-sm: 12px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+  --space-2xl: 40px;
+
+  /* Layout widths */
+  --sidebar-width: 380px;
+  --sidebar-width-wide: 420px;
+
+  /* Transitions */
+  --transition-fast: 120ms ease-out;
+  --transition-normal: 180ms ease-out;
+
+  /* Scrollbars */
+  --scrollbar-track: #050816;
+  --scrollbar-thumb: #272f3f;
+  --scrollbar-thumb-hover: #353f54;
+}
+
+/* ================================
+   Reset ligero
+   ================================ */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-sans);
+  font-size: var(--font-size-md);
+  line-height: 1.5;
+  color: var(--color-text);
+  background-color: var(--color-bg);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Evita que el mapa o el layout “brinquen” por los márgenes por defecto */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+p,
+ul,
+ol {
+  margin: 0;
+  padding: 0;
+}
+
+ul,
+ol {
+  list-style: none;
+}
+
+/* Enlaces base */
+
+a {
+  color: var(--color-primary);
+  text-decoration: none;
+  transition: color var(--transition-normal);
+}
+
+a:hover {
+  color: var(--color-primary-strong);
+}
+
+/* Botones base */
+
+button {
+  font-family: inherit;
+  font-size: inherit;
+  border: none;
+  background: none;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+  color: inherit;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+/* Inputs base */
+
+input,
+select,
+textarea {
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border-subtle);
+  background-color: var(--color-surface);
+  padding: 8px 10px;
+  outline: none;
+  transition:
+    border-color var(--transition-fast),
+    background-color var(--transition-fast),
+    box-shadow var(--transition-fast);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--color-text-soft);
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: var(--color-primary);
+  background-color: var(--color-bg-elevated);
+  box-shadow: 0 0 0 1px rgba(47, 128, 237, 0.4);
+}
+
+/* ================================
+   App root & layout base
+   ================================ */
+
+.app-root {
+  min-height: 100vh;
+  background: radial-gradient(circle at top left, #111827 0, #050816 55%);
+  display: flex;
+  flex-direction: column;
+width: 100vw;
+
+}
+
+/* DriverDashboard ya tiene navbar arriba y main abajo */
+
+.driver-dashboard {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.driver-dashboard__main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 0 var(--space-lg) var(--space-lg);
+  gap: var(--space-md);
+}
+
+/* ================================
+   Tipografía utilitaria
+   ================================ */
+
+.text-muted {
+  color: var(--color-text-muted);
+}
+
+.text-soft {
+  color: var(--color-text-soft);
+}
+
+.text-strong {
+  color: var(--color-text-strong);
+}
+
+.text-mono {
+  font-family: "SF Mono", ui-monospace, Menlo, Monaco, Consolas, "Liberation Mono",
+    "Courier New", monospace;
+}
+
+/* Tamaños utilitarios por si los quieres usar en algún detalle */
+
+.text-xs {
+  font-size: var(--font-size-xs);
+}
+
+.text-sm {
+  font-size: var(--font-size-sm);
+}
+
+.text-lg {
+  font-size: var(--font-size-lg);
+}
+
+.text-xl {
+  font-size: var(--font-size-xl);
+}
+
+/* ================================
+   Contenedores genéricos
+   ================================ */
+
+/* Panel genérico para tarjetas internas (utilizable en varios lados) */
+.surface-panel {
+  background-color: var(--color-surface);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-subtle);
+}
+
+/* Variante un poco más “flotada” para overlays */
+.surface-panel--elevated {
+  background-color: var(--color-surface-soft);
+  box-shadow: var(--shadow-subtle);
+}
+
+/* ================================
+   Scrollbar (Webkit)
+   ================================ */
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background-color: var(--scrollbar-track);
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: var(--scrollbar-thumb);
+  border-radius: 999px;
+  border: 2px solid var(--scrollbar-track);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--scrollbar-thumb-hover);
+}
+
+/* ================================
+   Helpers de layout
+   ================================ */
+
+.full-height {
+  height: 100%;
+}
+
+.flex {
+  display: flex;
+}
+
+.flex-column {
+  display: flex;
+  flex-direction: column;
+}
+
+.flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ================================
+   Estados genéricos
+   ================================ */
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-full);
+  padding: 2px 10px;
+  font-size: var(--font-size-xs);
+  font-weight: 500;
+  letter-spacing: 0.03em;
+}
+
+.badge--primary {
+  background-color: var(--color-primary-soft);
+  color: var(--color-primary);
+}
+
+.badge--success {
+  background-color: rgba(39, 174, 96, 0.16);
+  color: var(--color-success);
+}
+
+.badge--warning {
+  background-color: rgba(242, 201, 76, 0.18);
+  color: var(--color-warning);
+}
+
+.badge--danger {
+  background-color: rgba(235, 87, 87, 0.16);
+  color: var(--color-danger);
+}
