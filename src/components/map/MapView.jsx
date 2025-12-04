@@ -26,23 +26,30 @@ function MapView() {
   const [selectedTripId, setSelectedTripId] = useState(null);
   const [mapInstance, setMapInstance] = useState(null);
 
+  // defensivo: asegurarnos de que sea un array
+  const tripsArray = Array.isArray(trips)
+    ? trips
+    : (trips && Array.isArray(trips.points))
+    ? trips.points
+    : (trips && Array.isArray(trips.results))
+    ? trips.results
+    : [];
+
   useEffect(() => {
-    // si hay selección, ajustar bounds para pickup + destination
-    const trip = trips.find((t) => t.id === selectedTripId);
+    const trip = tripsArray.find((t) => (t.id ?? t.index ?? t.client_id) === selectedTripId);
     if (!trip || !mapInstance) return;
 
-    const p = [trip.pickup.lat, trip.pickup.lon];
-    const d = [trip.destination.lat, trip.destination.lon];
-    try {
-      mapInstance.fitBounds([p, d], { padding: [40, 40] });
-    } catch (e) {
-      // ignore
+    const p = trip.pickup ? [trip.pickup.lat, trip.pickup.lon] : null;
+    const d = trip.destination ? [trip.destination.lat, trip.destination.lon] : null;
+    if (p && d) {
+      try {
+        mapInstance.fitBounds([p, d], { padding: [40, 40] });
+      } catch (e) {}
     }
-  }, [selectedTripId, trips, mapInstance]);
+  }, [selectedTripId, tripsArray, mapInstance]);
 
-  // helper para dibujar polyline si hay selección
-  const selectedTrip = trips.find((t) => t.id === selectedTripId) || null;
-  const polylinePositions = selectedTrip
+  const selectedTrip = tripsArray.find((t) => (t.id ?? t.index ?? t.client_id) === selectedTripId) || null;
+  const polylinePositions = selectedTrip && selectedTrip.pickup && selectedTrip.destination
     ? [
         [selectedTrip.pickup.lat, selectedTrip.pickup.lon],
         [selectedTrip.destination.lat, selectedTrip.destination.lon],
@@ -63,31 +70,34 @@ function MapView() {
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
 
-        {trips.map((t) => (
-          <React.Fragment key={t.id}>
-            <CircleMarker
-              center={[t.pickup.lat, t.pickup.lon]}
-              radius={6}
-              pathOptions={{ color: "#F2994A", fillColor: "#F2994A", fillOpacity: 0.95 }}
-              eventHandlers={{
-                click: () => setSelectedTripId(t.id),
-              }}
-            >
-              <Tooltip direction="top">{t.client_name} (pickup)</Tooltip>
-            </CircleMarker>
+        {tripsArray.map((t, idx) => {
+          const pickup = t.pickup || t.pickupLocation || t.pickup_point;
+          const destination = t.destination || t.dropoff || t.destination_point;
+          const id = t.id ?? t.index ?? `trip_${idx}`;
+          if (!pickup || !destination) return null;
 
-            <CircleMarker
-              center={[t.destination.lat, t.destination.lon]}
-              radius={6}
-              pathOptions={{ color: "#56CCF2", fillColor: "#56CCF2", fillOpacity: 0.95 }}
-              eventHandlers={{
-                click: () => setSelectedTripId(t.id),
-              }}
-            >
-              <Tooltip direction="top">{t.client_name} (destination)</Tooltip>
-            </CircleMarker>
-          </React.Fragment>
-        ))}
+          return (
+            <React.Fragment key={id}>
+              <CircleMarker
+                center={[pickup.lat, pickup.lon]}
+                radius={6}
+                pathOptions={{ color: "#F2994A", fillColor: "#F2994A", fillOpacity: 0.95 }}
+                eventHandlers={{ click: () => setSelectedTripId(id) }}
+              >
+                <Tooltip direction="top">{t.client_name ?? t.clientName ?? `Trip ${id}`} (pickup)</Tooltip>
+              </CircleMarker>
+
+              <CircleMarker
+                center={[destination.lat, destination.lon]}
+                radius={6}
+                pathOptions={{ color: "#56CCF2", fillColor: "#56CCF2", fillOpacity: 0.95 }}
+                eventHandlers={{ click: () => setSelectedTripId(id) }}
+              >
+                <Tooltip direction="top">{t.client_name ?? t.clientName ?? `Trip ${id}`} (destination)</Tooltip>
+              </CircleMarker>
+            </React.Fragment>
+          );
+        })}
 
         {polylinePositions && (
           <Polyline positions={polylinePositions} pathOptions={{ color: "#F2994A", weight: 3, opacity: 0.8 }} />
