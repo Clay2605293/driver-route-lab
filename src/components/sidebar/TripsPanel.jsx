@@ -5,7 +5,7 @@ import TripList from "./trips/TripList";
 import TripDetail from "./trips/TripDetail";
 import ServicesPanel from "./services/ServicesPanel";
 import LabPanel from "./lab/LabPanel";
-import useTripsMock from "../../hooks/useTripsMock";
+import useTripsMock from "../../hooks/useTrips";
 
 function TripsPanel() {
   const {

@@ -1,7 +1,7 @@
 // src/components/sidebar/services/ServicesPanel.jsx
 import React, { useMemo, useState } from "react";
 import ServiceCard from "./ServiceCard";
-import useServicesMock from "../../../hooks/useServicesMock";
+import useServices from "../../../hooks/useServices";
 
 /**
  * ServicesPanel
@@ -15,7 +15,7 @@ import useServicesMock from "../../../hooks/useServicesMock";
  *   - "detail" → solo se ve el detalle + botón Back.
  */
 function ServicesPanel() {
-  const { services, summary } = useServicesMock();
+  const { services, summary } = useServices();
 
   const [selectedServiceId, setSelectedServiceId] = useState(null);
   const [typeFilter, setTypeFilter] = useState("all"); // all | gas_station | tire_shop | workshop

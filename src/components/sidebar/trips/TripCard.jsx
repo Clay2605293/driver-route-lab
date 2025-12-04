@@ -35,10 +35,31 @@ function TripCard({ trip, isSelected, onSelect }) {
     status,
   } = trip;
 
+  // calcula distancia Haversine en km si no viene estimatedDistanceKm
+  const computeDistanceKm = (p, d) => {
+    if (!p || !d) return null;
+    const toRad = (v) => (v * Math.PI) / 180;
+    const R = 6371; // km
+    const dLat = toRad(d.lat - p.lat);
+    const dLon = toRad(d.lon - p.lon);
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(toRad(p.lat)) *
+        Math.cos(toRad(d.lat)) *
+        Math.sin(dLon / 2) *
+        Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+  };
+
+  const distanceValue =
+    typeof estimatedDistanceKm === "number"
+      ? estimatedDistanceKm
+      : computeDistanceKm(trip.pickup || trip.pickupLocation, trip.destination || trip.dropoff);
+
   const formatDistance = (km) => {
-    if (km < 1) {
-      return `${Math.round(km * 1000)} m`;
-    }
+    if (km === null || km === undefined || Number.isNaN(km)) return "—";
+    if (km < 1) return `${Math.round(km * 1000)} m`;
     return `${km.toFixed(1)} km`;
   };
 
@@ -110,7 +131,7 @@ function TripCard({ trip, isSelected, onSelect }) {
         <div className="trip-card__metric">
           <span className="trip-card__metric-label">Distance</span>
           <span className="trip-card__metric-value">
-            {formatDistance(estimatedDistanceKm)}
+            {formatDistance(distanceValue)}
           </span>
         </div>
         <div className="trip-card__metric">

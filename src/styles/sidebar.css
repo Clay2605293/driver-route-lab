@@ -45,10 +45,12 @@
 
 .sidebar__content {
   flex: 1;
-  min-height: 0;
-  padding-top: var(--space-xs);
-  padding-bottom: var(--space-xs);
-  overflow-y: auto;
+  height: auto; /* Asegura que crezca con el contenido */
+  max-height: calc(100vh - var(--app-header-height, 64px)); /* Altura máxima basada en la ventana */
+  overflow-y: auto; /* Habilita el scroll vertical */
+
+  /* Asegúrate de que el contenedor ocupe toda la altura disponible */
+  max-height: calc(100vh - var(--app-header-height, 64px));
 }
 
 /* Footer del sidebar */
@@ -1436,6 +1438,12 @@
   padding: var(--space-sm);
 }
 
+.lab-panel__section:last-child .lab-panel__section-body {
+  max-height: none !important; /* Quita cualquier límite de altura */
+  height: auto !important;     /* Deja que crezca con el contenido */
+  overflow: visible !important; /* Desactiva el scroll interno */
+}
+
 .lab-panel__section-body--columns {
   display: grid;
   grid-template-columns: minmax(0, 1.4fr) minmax(0, 1.3fr);
@@ -1720,3 +1728,103 @@
   flex-direction: column;
 }
 
+/* ================================
+   Lab full-screen animated overrides (bi-directional slide; keep header visible)
+   - Habilita transiciones en ambas direcciones
+   - Sidebar fixed but respetando la altura del header (var --app-header-height)
+   - El mapa se anima con transform (entra/sale)
+   - Elimina reglas que desactivaban transiciones en el estado expandido
+   ================================ */
+
+/* Default header height variable (ajusta si tu header tiene otra altura) */
+:root {
+  --app-header-height: 64px;
+}
+
+/* base transitions: siempre habilitadas para permitir animación tanto al entrar como al salir */
+.main-layout__map {
+  transition: transform 360ms cubic-bezier(.2,.9,.2,1), opacity 280ms ease;
+  will-change: transform, opacity;
+}
+
+.main-layout__sidebar {
+  transition: width 360ms cubic-bezier(.2,.9,.2,1), transform 360ms cubic-bezier(.2,.9,.2,1), padding 200ms ease;
+  will-change: width, transform, padding;
+  position: relative;
+  z-index: 1;
+}
+
+/* Slide map out when lab is active */
+.main-layout--lab-expanded .main-layout__map {
+  transform: translateX(100%);
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Sidebar covers viewport but leaves space for header */
+.main-layout--lab-expanded .main-layout__sidebar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: var(--app-header-height, 64px);
+  width: 100%;
+  max-width: 100%;
+  z-index: 60;
+  border-radius: 0;
+  
+  /* FIX FINAL: Apagamos flex para que el padding-bottom SÍ funcione */
+  display: block !important; 
+  
+  /* El padding gigante ahora sí se respetará */
+  padding: var(--space-md);
+  padding-bottom: 200px !important; 
+
+  min-height: calc(100vh - var(--app-header-height, 64px));
+  transform: translateX(0);
+  overflow-y: auto;
+}
+
+.main-layout--lab-expanded .sidebar {
+  display: block !important;       /* Quitamos flex para que fluya natural */
+  height: auto !important;         /* Altura libre */
+  min-height: 100% !important;
+  overflow: visible !important;
+}
+
+/* 2. Liberamos el contenedor de contenido y le damos un padding gigante */
+.main-layout--lab-expanded .sidebar__content {
+  display: block !important;
+  flex: none !important;
+  height: auto !important;
+  overflow: visible !important;
+}
+
+/* 3. FIX FINAL: Forzamos espacio al final del panel de laboratorio específicamente */
+.main-layout--lab-expanded .lab-panel {
+  padding-bottom: 300px !important; /* Exageramos el espacio para asegurar que se vea todo */
+  height: auto !important;
+  overflow: visible !important;
+}
+
+/* Asegura que el mapa vuelva a su estado visible en el layout normal */
+.main-layout__map {
+  transform: translateX(0);
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Mantén el header por encima del sidebar fijo — ajusta selector si tu header usa otra clase */
+.app-header,
+.main-header,
+.site-header {
+  position: relative;
+  z-index: 70;
+}
+
+/* Respect users who prefer reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .main-layout__map,
+  .main-layout__sidebar {
+    transition: none !important;
+  }
+}
