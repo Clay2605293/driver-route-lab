@@ -5,7 +5,9 @@ import TripList from "./trips/TripList";
 import TripDetail from "./trips/TripDetail";
 import ServicesPanel from "./services/ServicesPanel";
 import LabPanel from "./lab/LabPanel";
-import useTripsMock from "../../hooks/useTrips";
+import useTrips from "../../hooks/useTrips";
+import client from "../../api/client";
+import { useRoute } from "../../contexts/RouteContext";
 
 function TripsPanel() {
   const {
@@ -15,7 +17,8 @@ function TripsPanel() {
     summary,
     preferredAlgorithm,
     setPreferredAlgorithm,
-  } = useTripsMock();
+  } = useTrips();
+  const { setRoute } = useRoute();
 
   const [activeTab, setActiveTab] = useState("trips"); // "trips" | "services" | "lab"
 
@@ -30,78 +33,128 @@ function TripsPanel() {
     [trips, selectedTripId]
   );
 
-  const handleSelectTrip = (tripId) => {
-      setSelectedTripId(tripId);
-      setTripViewMode("detail");
-    };
+  // tripObj is the whole trip object from the list
+  const handleSelectTrip = async (tripOrId) => {
+    const tripObj =
+      tripOrId && typeof tripOrId === "object"
+        ? tripOrId
+        : trips.find((t) => t.id === tripOrId);
+    const tripId = tripObj?.id ?? tripOrId;
+    if (!tripId) return;
 
-    const handleBackToTripList = () => {
-      setTripViewMode("list");
-    };
+    setSelectedTripId(tripId);
+    setTripViewMode("detail");
 
-    const renderTripsTab = () => (
-      <div className="trips-panel">
-        {/* header igual */}
+    // prepare origin/destination for /api/route
+    const origin =
+      tripObj?.clientLat != null && tripObj?.clientLon != null
+        ? { lat: tripObj.clientLat, lon: tripObj.clientLon }
+        : tripObj?.pickup?.lat != null && tripObj?.pickup?.lon != null
+        ? { lat: tripObj.pickup.lat, lon: tripObj.pickup.lon }
+        : null;
 
-        <div className="trips-panel__body">
-          {/* LISTA */}
-          <div
-            className={
-              "trips-panel__column trips-panel__column--list" +
-              (tripViewMode === "detail"
-                ? " trips-panel__column--hidden"
-                : "")
-            }
-          >
-            <TripList
-              trips={trips}
-              selectedTripId={selectedTripId}
-              onSelectTrip={handleSelectTrip}
-              distanceFilter={distanceFilter}
-              setDistanceFilter={setDistanceFilter}
-              searchQuery={searchQuery}
-              setSearchQuery={setSearchQuery}
-            />
-          </div>
+    const destination =
+      tripObj?.destinationLat != null && tripObj?.destinationLon != null
+        ? { lat: tripObj.destinationLat, lon: tripObj.destinationLon }
+        : tripObj?.destination?.lat != null && tripObj?.destination?.lon != null
+        ? { lat: tripObj.destination.lat, lon: tripObj.destination.lon }
+        : null;
 
-          {/* DETALLE */}
-          <div
-            className={
-              "trips-panel__column trips-panel__column--detail" +
-              (tripViewMode === "list"
-                ? " trips-panel__column--hidden"
-                : "")
-            }
-          >
-            {selectedTrip ? (
-              <div className="trip-detail-wrapper">
-                <button
-                  type="button"
-                  className="trips-panel__back-button"
-                  onClick={handleBackToTripList}
-                >
-                  ← Back to trips
-                </button>
-                <TripDetail
-                  trip={selectedTrip}
-                  preferredAlgorithm={preferredAlgorithm}
-                />
-              </div>
-            ) : (
-              <div className="trips-panel__empty-state">
-                <h3 className="trips-panel__empty-title">
-                  No trip selected yet
-                </h3>
-                <p className="trips-panel__empty-text">
-                  Choose a client request from the list to inspect its pickup and
-                  dropoff routes.
-                </p>
-              </div>
-            )}
-          </div>
+    const algorithm = tripObj?.algorithmUsed ?? preferredAlgorithm ?? "astar";
+
+    if (!origin || !destination) {
+      // nothing to fetch for route
+      setRoute(null);
+      return;
+    }
+
+    try {
+      // call the route endpoint
+      const payload = {
+        origin,
+        destination,
+        algorithm,
+        cost_metric: "time",
+      };
+      const res = await client.post("/api/route", payload, {
+        timeout: 120000,
+      });
+      const data = res.data || {};
+      const path_coords = Array.isArray(data.path_coords) ? data.path_coords : [];
+      setRoute({ path_coords, meta: data });
+    } catch (err) {
+      console.error("Error fetching /api/route", err);
+      setRoute(null);
+    }
+  };
+
+  const handleBackToTripList = () => {
+    setTripViewMode("list");
+  };
+
+  const renderTripsTab = () => (
+    <div className="trips-panel">
+      {/* header igual */}
+
+      <div className="trips-panel__body">
+        {/* LISTA */}
+        <div
+          className={
+            "trips-panel__column trips-panel__column--list" +
+            (tripViewMode === "detail"
+              ? " trips-panel__column--hidden"
+              : "")
+          }
+        >
+          <TripList
+            trips={trips}
+            selectedTripId={selectedTripId}
+            onSelectTrip={handleSelectTrip}
+            distanceFilter={distanceFilter}
+            setDistanceFilter={setDistanceFilter}
+            searchQuery={searchQuery}
+            setSearchQuery={setSearchQuery}
+          />
+        </div>
+
+        {/* DETALLE */}
+        <div
+          className={
+            "trips-panel__column trips-panel__column--detail" +
+            (tripViewMode === "list"
+              ? " trips-panel__column--hidden"
+              : "")
+          }
+        >
+          {selectedTrip ? (
+            <div className="trip-detail-wrapper">
+              <button
+                type="button"
+                className="trips-panel__back-button"
+                onClick={handleBackToTripList}
+              >
+                ← Back to trips
+              </button>
+              <TripDetail
+                trip={selectedTrip}
+                preferredAlgorithm={preferredAlgorithm}
+              />
+            </div>
+          ) : (
+            <div className="trips-panel__empty-state">
+              <h3 className="trips-panel__empty-title">
+                No trip selected yet
+              </h3>
+              <p className="trips-panel__empty-text">
+                Choose a client request from the list to inspect its pickup and
+                dropoff routes.
+              </p>
+            </div>
+          )}
         </div>
       </div>
-    );
+    </div>
+  );
 
   // Tabs principales del sidebar
   return (

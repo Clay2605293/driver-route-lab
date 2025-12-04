@@ -3,33 +3,7 @@ import React from "react";
 
 /**
  * TripDetail
- *
- * Panel de detalle para un viaje seleccionado.
- * Muestra:
- * - Información del cliente y el viaje.
- * - Desglose de pickup y dropoff (distancia/tiempo).
- * - Estado del viaje.
- * - Resumen del algoritmo de rutas preferido.
- * - (Opcional) resumen de tiempos de búsqueda de nodos (KD vs naive).
- *
- * Props:
- * - trip: objeto con al menos:
- *   - id: string
- *   - clientName: string
- *   - pickupLabel: string
- *   - dropoffLabel: string
- *   - estimatedDistanceKm: number
- *   - estimatedDurationMin: number
- *   - lengthCategory: "short" | "medium" | "long"
- *   - status: "pending" | "in_progress" | "completed"
- *   - (opcionales, si los agregas en mockTrips.js):
- *     - pickupDistanceKm: number
- *     - pickupDurationMin: number
- *     - dropoffDistanceKm: number
- *     - dropoffDurationMin: number
- *     - kdSearchMs: number
- *     - naiveSearchMs: number
- * - preferredAlgorithm: string ("auto" | "astar" | "ucs" | "bfs" | "dfs" | "iddfs")
+ * Defensive formatting to avoid runtime errors when some numeric fields are missing.
  */
 function TripDetail({ trip, preferredAlgorithm }) {
   if (!trip) {
@@ -54,18 +28,22 @@ function TripDetail({ trip, preferredAlgorithm }) {
   } = trip;
 
   const formatDistance = (km) => {
-    if (km < 1) {
-      return `${Math.round(km * 1000)} m`;
+    if (km === null || km === undefined || Number.isNaN(Number(km))) return "—";
+    const n = Number(km);
+    if (n < 1) {
+      return `${Math.round(n * 1000)} m`;
     }
-    return `${km.toFixed(1)} km`;
+    return `${n.toFixed(1)} km`;
   };
 
   const formatDuration = (minutes) => {
-    if (minutes < 60) {
-      return `${Math.round(minutes)} min`;
+    if (minutes === null || minutes === undefined || Number.isNaN(Number(minutes))) return "—";
+    const m = Number(minutes);
+    if (m < 60) {
+      return `${Math.round(m)} min`;
     }
-    const hours = Math.floor(minutes / 60);
-    const mins = Math.round(minutes % 60);
+    const hours = Math.floor(m / 60);
+    const mins = Math.round(m % 60);
     if (mins === 0) {
       return `${hours} h`;
     }
@@ -110,13 +88,36 @@ function TripDetail({ trip, preferredAlgorithm }) {
   })();
 
   // Valores derivados para pickup/dropoff si no se definieron explícitamente en el mock.
-  const pickupKm = pickupDistanceKm ?? estimatedDistanceKm * 0.25;
-  const dropoffKm = dropoffDistanceKm ?? estimatedDistanceKm * 0.75;
-  const pickupMin = pickupDurationMin ?? estimatedDurationMin * 0.25;
-  const dropoffMin = dropoffDurationMin ?? estimatedDurationMin * 0.75;
+  const pickupKm =
+    typeof pickupDistanceKm === "number"
+      ? pickupDistanceKm
+      : typeof estimatedDistanceKm === "number"
+      ? estimatedDistanceKm * 0.25
+      : null;
+
+  const dropoffKm =
+    typeof dropoffDistanceKm === "number"
+      ? dropoffDistanceKm
+      : typeof estimatedDistanceKm === "number"
+      ? estimatedDistanceKm * 0.75
+      : null;
+
+  const pickupMin =
+    typeof pickupDurationMin === "number"
+      ? pickupDurationMin
+      : typeof estimatedDurationMin === "number"
+      ? estimatedDurationMin * 0.25
+      : null;
+
+  const dropoffMin =
+    typeof dropoffDurationMin === "number"
+      ? dropoffDurationMin
+      : typeof estimatedDurationMin === "number"
+      ? estimatedDurationMin * 0.75
+      : null;
 
   const hasSearchMetrics =
-    typeof kdSearchMs === "number" && typeof naiveSearchMs === "number";
+    Number.isFinite(kdSearchMs) && Number.isFinite(naiveSearchMs);
 
   return (
     <div className="trip-detail">
@@ -170,7 +171,7 @@ function TripDetail({ trip, preferredAlgorithm }) {
             </div>
           </div>
 
-          <div className="trip-detail__row trip-detail__row--compact">
+          <div className="trip-detail__row trip-detail__Row--compact">
             <div className="trip-detail__field">
               <span className="trip-detail__field-label">Total distance</span>
               <span className="trip-detail__field-value">
@@ -278,7 +279,7 @@ function TripDetail({ trip, preferredAlgorithm }) {
                     KD-Tree
                   </span>
                   <span className="trip-detail__table-col">
-                    {kdSearchMs.toFixed(2)}
+                    {Number(kdSearchMs).toFixed(2)}
                   </span>
                 </div>
                 <div className="trip-detail__table-row">
@@ -286,7 +287,7 @@ function TripDetail({ trip, preferredAlgorithm }) {
                     Exhaustive
                   </span>
                   <span className="trip-detail__table-col">
-                    {naiveSearchMs.toFixed(2)}
+                    {Number(naiveSearchMs).toFixed(2)}
                   </span>
                 </div>
               </div>

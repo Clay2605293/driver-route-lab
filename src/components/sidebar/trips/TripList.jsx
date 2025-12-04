@@ -145,7 +145,7 @@ function TripList({ trips, selectedTripId, onSelectTrip }) {
               key={trip.id}
               trip={trip}
               isSelected={trip.id === selectedTripId}
-              onSelect={() => onSelectTrip(trip.id)}
+              onSelect={() => onSelectTrip(trip)}
             />
           ))
         )}
