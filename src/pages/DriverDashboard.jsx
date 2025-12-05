@@ -2,6 +2,7 @@
 import React, { useState } from "react";
 import Navbar from "../components/layout/Navbar";
 import MainLayout from "../components/layout/MainLayout";
+import useTrips from "../hooks/useTrips";
 
 /**
  * DriverDashboard
@@ -17,9 +18,14 @@ function DriverDashboard() {
   // Panel activo en el sidebar: "trips" | "services" | "lab"
   const [activePanel, setActivePanel] = useState("trips");
 
-  // En el futuro podrías manejar aquí cosas como:
-  // - Datos del chofer autenticado.
-  // - Configuraciones globales de la app (tema, idioma, etc.).
+  const {
+    trips,
+    selectedTripId,
+    setSelectedTripId,
+    summary,
+    preferredAlgorithm,
+    setPreferredAlgorithm,
+  } = useTrips();
 
   return (
     <div className="driver-dashboard">
@@ -36,6 +42,11 @@ function DriverDashboard() {
         <MainLayout
           activePanel={activePanel}
           onChangePanel={setActivePanel}
+          // Pasamos los datos de trips hacia MainLayout / MapView / Sidebar
+          trips={trips}
+          selectedTripId={selectedTripId}
+          setSelectedTripId={setSelectedTripId}
+          preferredAlgorithm={preferredAlgorithm}
         />
       </main>
     </div>

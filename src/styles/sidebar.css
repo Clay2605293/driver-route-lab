@@ -45,10 +45,12 @@
 
 .sidebar__content {
   flex: 1;
-  min-height: 0;
-  padding-top: var(--space-xs);
-  padding-bottom: var(--space-xs);
-  overflow-y: auto;
+  height: auto; /* Asegura que crezca con el contenido */
+  max-height: calc(100vh - var(--app-header-height, 64px)); /* Altura máxima basada en la ventana */
+  overflow-y: auto; /* Habilita el scroll vertical */
+
+  /* Asegúrate de que el contenedor ocupe toda la altura disponible */
+  max-height: calc(100vh - var(--app-header-height, 64px));
 }
 
 /* Footer del sidebar */
@@ -1436,6 +1438,12 @@
   padding: var(--space-sm);
 }
 
+.lab-panel__section:last-child .lab-panel__section-body {
+  max-height: none !important; /* Quita cualquier límite de altura */
+  height: auto !important;     /* Deja que crezca con el contenido */
+  overflow: visible !important; /* Desactiva el scroll interno */
+}
+
 .lab-panel__section-body--columns {
   display: grid;
   grid-template-columns: minmax(0, 1.4fr) minmax(0, 1.3fr);
@@ -1720,3 +1728,135 @@
   flex-direction: column;
 }
 
+/* ================================
+   Lab full-screen animated overrides (bi-directional slide; keep header visible)
+   - Habilita transiciones en ambas direcciones
+   - Sidebar fixed but respetando la altura del header (var --app-header-height)
+   - El mapa se anima con transform (entra/sale)
+   - Elimina reglas que desactivaban transiciones en el estado expandido
+   ================================ */
+
+/* Default header height variable (ajusta si tu header tiene otra altura) */
+:root {
+  --app-header-height: 64px;
+}
+
+/* base transitions: siempre habilitadas para permitir animación tanto al entrar como al salir */
+.main-layout__map {
+  transition: transform 360ms cubic-bezier(.2,.9,.2,1), opacity 280ms ease;
+  will-change: transform, opacity;
+}
+
+.main-layout__sidebar {
+  transition: width 360ms cubic-bezier(.2,.9,.2,1), transform 360ms cubic-bezier(.2,.9,.2,1), padding 200ms ease;
+  will-change: width, transform, padding;
+  position: relative;
+  z-index: 1;
+}
+
+/* Slide map out when lab is active */
+.main-layout--lab-expanded .main-layout__map {
+  transform: translateX(100%);
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Sidebar covers viewport but leaves space for header */
+.main-layout--lab-expanded .main-layout__sidebar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: var(--app-header-height, 64px);
+  bottom: 0;                         /* <- clave: fijar bottom para limitar altura */
+  width: 100%;
+  max-width: 100%;
+  z-index: 60;
+  border-radius: 0;
+  padding: var(--space-md);
+  /* outer container no debe mostrar scroll: lo maneja el hijo */
+  overflow: hidden;
+  display: flex;                     /* mantener layout en flex para que hijos respeten alturas */
+  flex-direction: column;
+}
+
+/* Sidebar wrapper must be a flex column that fills the fixed area */
+.main-layout--lab-expanded .sidebar {
+  display: flex !important;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;                  /* ocultamos overflow externo */
+}
+
+/* Contenido interior: este es el único que hace scroll */
+.main-layout--lab-expanded .sidebar__content {
+  flex: 1 1 auto;
+  min-height: 0;                     /* imprescindible para scroll en contenedores flex */
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 220px;             /* espacio extra para ver el footer / conclusión */
+}
+
+/* Lab panel puede seguir usando padding extra, pero no debe desactivar el scroll */
+.main-layout--lab-expanded .lab-panel {
+  padding-bottom: 300px; /* espacio visible al final */
+  overflow: visible;
+}
+
+/* Asegura que el mapa vuelva a su estado visible en el layout normal */
+.main-layout__map {
+  transform: translateX(0);
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Mantén el header por encima del sidebar fijo — ajusta selector si tu header usa otra clase */
+.app-header,
+.main-header,
+.site-header {
+  position: relative;
+  z-index: 70;
+}
+
+/* Respect users who prefer reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .main-layout__map,
+  .main-layout__sidebar {
+    transition: none !important;
+  }
+}
+
+.services-panel__nearest-action {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.services-panel__nearest-button {
+  width: 100%;
+  padding: 10px 16px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.services-panel__nearest-button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.services-panel__nearest-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.services-panel__error--compact {
+  padding: 8px 12px;
+  font-size: 13px;
+}

@@ -2,6 +2,7 @@
 import React from "react";
 import Sidebar from "../sidebar/Sidebar";
 import MapView from "../map/MapView";
+import { RouteProvider } from "../../contexts/RouteContext";
 
 /**
  * MainLayout
@@ -19,23 +20,43 @@ import MapView from "../map/MapView";
  * - activePanel: "trips" | "services" | "lab"
  * - onChangePanel: función para cambiar el panel activo desde el sidebar.
  */
-function MainLayout({ activePanel, onChangePanel }) {
+function MainLayout({
+  activePanel,
+  onChangePanel,
+  trips,
+  selectedTripId,
+  setSelectedTripId,
+  preferredAlgorithm,
+}) {
   return (
-    <div className="main-layout">
+    <div className={"main-layout" + (activePanel === "lab" ? " main-layout--lab-expanded" : "")}>
       <div className="main-layout__inner">
-        {/* Columna izquierda: sidebar con tabs y contenido contextual */}
-        <aside className="main-layout__sidebar">
-          <Sidebar activePanel={activePanel} onChangePanel={onChangePanel} />
-        </aside>
+        <RouteProvider>
+          {/* Columna izquierda: sidebar con tabs y contenido contextual */}
+          <aside className="main-layout__sidebar">
+            <Sidebar
+              activePanel={activePanel}
+              onChangePanel={onChangePanel}
+              trips={trips}
+              selectedTripId={selectedTripId}
+              setSelectedTripId={setSelectedTripId}
+              preferredAlgorithm={preferredAlgorithm}
+            />
+          </aside>
 
-        {/* Columna derecha: mapa principal */}
-        <section className="main-layout__map">
-          {/*
-            MapView se enfocará en mostrar el mapa y overlays de rutas.
-            MainLayout no se mete con lógica de mapas, solo define el espacio.
-          */}
-          <MapView />
-        </section>
+          {/* Columna derecha: mapa principal */}
+          <section className="main-layout__map">
+            {/*
+              MapView se enfocará en mostrar el mapa y overlays de rutas.
+              MainLayout no se mete con lógica de mapas, solo define el espacio.
+            */}
+            <MapView
+              trips={trips}
+              selectedTripId={selectedTripId}
+              setSelectedTripId={setSelectedTripId}
+            />
+          </section>
+        </RouteProvider>
       </div>
     </div>
   );
