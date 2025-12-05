@@ -285,6 +285,10 @@ function ServicesPanel() {
                 <button
                   type="button"
                   className="services-panel__secondary-button"
+                  onClick={() => {
+                    console.debug("ServicesPanel: toggleVoronoi clicked");
+                    window.dispatchEvent(new CustomEvent("toggleVoronoi"));
+                  }}
                 >
                   Show coverage area (Voronoi)
                 </button>

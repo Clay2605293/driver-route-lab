@@ -1,15 +1,78 @@
 // src/components/map/MapView.jsx
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, useRef } from "react";
 import {
   MapContainer,
   TileLayer,
   CircleMarker,
+  Marker,
   Polyline,
   Tooltip,
+  useMap,
 } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
+import * as L from "leaflet";
 import useTrips from "../../hooks/useTrips";
+import useServices from "../../hooks/useServices";
 import { useRoute } from "../../contexts/RouteContext";
+import client from "../../api/client";
+
+// Componente auxiliar para dibujar Voronoi imperativamente
+function VoronoiLayer({ cells, visible, colors }) {
+  const map = useMap();
+  const layerGroupRef = useRef(null);
+
+  useEffect(() => {
+    if (!visible || !cells || cells.length === 0) {
+      // Limpiar capas existentes si no visible
+      if (layerGroupRef.current) {
+        map.removeLayer(layerGroupRef.current);
+        layerGroupRef.current = null;
+      }
+      return;
+    }
+
+    // Crear LayerGroup
+    const layerGroup = L.layerGroup().addTo(map);
+    layerGroupRef.current = layerGroup;
+
+    // Dibujar cada celda
+    cells.forEach((cell) => {
+      if (!cell.polygon || cell.polygon.length < 3) return;
+
+      const positions = cell.polygon;
+      const colorConfig = colors[cell.type] || colors.default;
+
+      const polygon = L.polygon(positions, {
+        color: colorConfig.stroke,
+        weight: 2,
+        opacity: 0.7,
+        fillColor: colorConfig.stroke,
+        fillOpacity: 0.1,
+      });
+
+      polygon.bindTooltip(`
+        <div style="font-weight: 700">${cell.name || cell.type}</div>
+        <div style="font-size: 12px; color: #666">${cell.type}</div>
+      `);
+
+      polygon.on('click', () => {
+        map.fitBounds(polygon.getBounds(), { padding: [30, 30] });
+      });
+
+      polygon.addTo(layerGroup);
+    });
+
+    // Cleanup
+    return () => {
+      if (layerGroupRef.current) {
+        map.removeLayer(layerGroupRef.current);
+        layerGroupRef.current = null;
+      }
+    };
+  }, [cells, visible, map, colors]);
+
+  return null;
+}
 
 function MapView() {
   const defaultCenter = [20.6736, -103.344];
@@ -53,7 +116,6 @@ function MapView() {
       // GeoJSON Feature
       if (p.type === "Feature" && Array.isArray(p.geometry?.coordinates)) {
         const c = p.geometry.coordinates;
-        // c puede ser [lon,lat] o [lat,lon]; devolver como nos llegue para que la heurística lo decida
         return Array.isArray(c[0]) ? null : [Number(c[0]), Number(c[1])];
       }
       if (Array.isArray(p.geometry?.coordinates)) return [Number(p.geometry.coordinates[0]), Number(p.geometry.coordinates[1])];
@@ -119,7 +181,6 @@ function MapView() {
       if (best) {
         usedPickup = best.pickup ? [Number(best.pickup.lat), Number(best.pickup.lon)] : (best.clientLat != null ? [Number(best.clientLat), Number(best.clientLon)] : null);
         usedDest = best.destination ? [Number(best.destination.lat), Number(best.destination.lon)] : (best.destinationLat != null ? [Number(best.destinationLat), Number(best.destinationLon)] : null);
-        console.debug("normalizePathCoords: matched best trip for path", { tripId: best.id ?? best.index ?? null, score: bestScore, pickup: usedPickup, destination: usedDest });
       }
     }
 
@@ -133,8 +194,6 @@ function MapView() {
     let invScore = 0;
     if (usedPickup) invScore += safeHav(inverted[0], usedPickup);
     if (usedDest && inverted.length > 1) invScore += safeHav(inverted[inverted.length - 1], usedDest);
-
-    console.debug("normalizePathCoords: scores", { origScore, invScore, usedPickup, usedDest, firstOrig: mapped[0], firstInv: inverted[0], lastOrig: mapped[mapped.length - 1], lastInv: inverted[inverted.length - 1] });
 
     const THRESH_KM = 0.05;
     const chosen = (invScore + THRESH_KM < origScore) ? inverted : mapped;
@@ -164,14 +223,13 @@ function MapView() {
     }
 
     const bestTripId = best ? (best.id ?? best.index ?? null) : null;
-    console.debug("MapView: bestTripForNormalizedPath", { bestTripId, bestScore, secondBest });
 
-    // umbrales para auto-select: mejorScore < 0.5km y diferencia con segundo > 0.2km OR no hay seleccionado actual
+    // umbrales para auto-select
     const AUTO_SELECT_SCORE_KM = 0.5;
     const AUTO_SELECT_MARGIN_KM = 0.2;
     const shouldAutoSelect = bestTripId && ( (bestScore < AUTO_SELECT_SCORE_KM && (secondBest - bestScore) > AUTO_SELECT_MARGIN_KM) || !selectedTripId );
 
-    // snap endpoints: si pickup/dest están dentro de 200m (0.2km) del primer/último punto, reemplazarlos
+    // snap endpoints
     const SNAP_KM = 0.2;
     let pathCopy = normalizedPath.slice();
 
@@ -196,19 +254,12 @@ function MapView() {
     return { finalPath: pathCopy, autoSelectedTripId: shouldAutoSelect ? bestTripId : null };
   }, [normalizedPath, tripsArray, selectedTripId]);
 
-  // Si auto-selected trip es distinto del seleccionado actualmente, actualizar (una sola vez)
+  // Si auto-selected trip es distinto del seleccionado actualmente, actualizar
   useEffect(() => {
     if (autoSelectedTripId && (selectedTripId !== autoSelectedTripId)) {
-      console.debug("MapView: auto-selecting trip:", autoSelectedTripId);
       setSelectedTripId(autoSelectedTripId);
     }
   }, [autoSelectedTripId, selectedTripId, setSelectedTripId]);
-
-  // logs de llegada de ruta
-  useEffect(() => {
-    if (!rawPath) return;
-    console.debug("MapView: rawPath sample", { tripId: selectedTripId, rawFirst: rawPath[0], rawLast: rawPath[rawPath.length - 1], pathLen: rawPath.length });
-  }, [rawPath, selectedTripId]);
 
   // ajustar vista cuando cambian selection o finalPath
   useEffect(() => {
@@ -241,6 +292,102 @@ function MapView() {
 
   const polylineToRender = (finalPath && finalPath.length > 0) ? finalPath : fallbackPolyline;
 
+  // services from backend
+  const { services } = useServices();
+
+  // emojis / íconos de servicio
+  const serviceIcons = useMemo(() => {
+    const makeIcon = (emoji) =>
+      L.divIcon({
+        html: `<div style="font-size:20px;line-height:20px;text-align:center">${emoji}</div>`,
+        className: "",
+        iconSize: [28, 28],
+        iconAnchor: [14, 14],
+      });
+
+    return {
+      gas_station: makeIcon("⛽"),
+      tire_shop: makeIcon("🛞"),
+      workshop: makeIcon("🔧"),
+      default: makeIcon("📍"),
+    };
+  }, []);
+
+  // --- Voronoi cells state & fetch ---
+  const [voronoiCells, setVoronoiCells] = useState([]);
+  const [voronoiVisible, setVoronoiVisible] = useState(false);
+  const [voronoiLoading, setVoronoiLoading] = useState(false);
+
+  useEffect(() => {
+    const loadVoronoi = async () => {
+      if (voronoiLoading || voronoiCells.length > 0) return;
+      
+      setVoronoiLoading(true);
+      
+      try {
+        const apiBase = client?.defaults?.baseURL || "";
+        const absUrl = apiBase && apiBase.startsWith("http")
+          ? `${apiBase.replace(/\/$/, "")}/api/services/voronoi`
+          : "/api/services/voronoi";
+
+        const res = await client.get(absUrl);
+        const data = res.data;
+
+        // Normalizar puntos
+        const cells = (data?.cells || []).map((c) => {
+          const polygon = (c.polygon || [])
+            .map(p => {
+              if (!p) return null;
+              const lat = Number(p.lat ?? p.latitude ?? p.latitud);
+              const lon = Number(p.lon ?? p.lng ?? p.longitude);
+              if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+              if (Math.abs(lat) > 90 || Math.abs(lon) > 180) return null;
+              return [lat, lon];
+            })
+            .filter(Boolean);
+
+          if (polygon.length < 3) return null;
+
+          return {
+            id: c.id ?? c.osm_id ?? `cell_${Math.random().toString(36).slice(2)}`,
+            type: c.type ?? "unknown",
+            name: c.name ?? c.type ?? "Unknown",
+            polygon,
+          };
+        }).filter(Boolean);
+        
+        setVoronoiCells(cells);
+        window.__voronoiCells = cells;
+        
+      } catch (e) {
+        console.error("Error loading Voronoi:", e);
+      } finally {
+        setVoronoiLoading(false);
+      }
+    };
+
+    const handleToggle = () => {
+      setVoronoiVisible(prev => {
+        const next = !prev;
+        if (next && voronoiCells.length === 0) {
+          loadVoronoi();
+        }
+        return next;
+      });
+    };
+
+    window.addEventListener("toggleVoronoi", handleToggle);
+    return () => window.removeEventListener("toggleVoronoi", handleToggle);
+  }, [voronoiCells.length, voronoiLoading]);
+
+  // colores por tipo para Voronoi
+  const voronoiTypeColors = useMemo(() => ({
+    gas_station: { stroke: "#8A2BE2" }, // purple
+    tire_shop: { stroke: "#56CCF2" }, // light blue
+    workshop: { stroke: "#F2994A" }, // orange
+    default: { stroke: "#888" }, // gray
+  }), []);
+
   return (
     <div className="map-view">
       <MapContainer
@@ -253,6 +400,13 @@ function MapView() {
         <TileLayer
           attribution='&copy; OpenStreetMap contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        />
+
+        {/* Voronoi Layer - Imperativo */}
+        <VoronoiLayer 
+          cells={voronoiCells} 
+          visible={voronoiVisible}
+          colors={voronoiTypeColors}
         />
 
         {tripsArray.map((t, idx) => {
@@ -290,6 +444,54 @@ function MapView() {
             pathOptions={{ color: "#8A2BE2", weight: 6, opacity: 0.95, lineCap: "round", lineJoin: "round" }}
           />
         )}
+
+        {/* Voronoi debug badge */}
+        <div
+          style={{
+            position: "absolute",
+            left: 12,
+            top: 12,
+            zIndex: 700,
+            background: "rgba(255,255,255,0.9)",
+            padding: "6px 10px",
+            borderRadius: 6,
+            fontSize: 13,
+            boxShadow: "0 2px 6px rgba(0,0,0,0.12)",
+          }}
+        >
+          <strong>Voronoi</strong>: {voronoiVisible ? "visible" : "hidden"} •{" "}
+          {voronoiLoading ? "loading..." : `${voronoiCells.length} cells`}
+        </div>
+
+        {/* Service markers (emoji) */}
+        {Array.isArray(services) && services.map((s, idx) => {
+          const lat = Number(s.lat ?? s.latitude ?? s.latitud ?? 0);
+          const lon = Number(s.lon ?? s.longitude ?? s.lon ?? 0);
+          if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+          const id = s.id ?? `svc_${idx}`;
+          const icon = serviceIcons[s.type] ?? serviceIcons.default;
+
+          return (
+            <Marker
+              key={id}
+              position={[lat, lon]}
+              icon={icon}
+              eventHandlers={{
+                click: () => {
+                  if (mapInstance) {
+                    try { mapInstance.flyTo([lat, lon], 15); } catch (e) {}
+                  }
+                },
+              }}
+            >
+              <Tooltip direction="top">
+                <div style={{ fontWeight: 700 }}>{s.name ?? s.type}</div>
+                <div style={{ fontSize: 12, color: "#444" }}>{s.type}</div>
+                <div style={{ fontSize: 11, color: "#666" }}>{s.areaLabel ?? ""}</div>
+              </Tooltip>
+            </Marker>
+          );
+        })}
       </MapContainer>
 
       <div className="map-view__overlay">
