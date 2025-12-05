@@ -82,13 +82,6 @@ function Sidebar({ activePanel, onChangePanel }) {
         {renderActivePanel()}
       </div>
 
-      {/* Pie de sidebar con pequeño texto de ayuda / estado */}
-      <footer className="sidebar__footer">
-        <span className="sidebar__footer-label">Simulation mode</span>
-        <span className="sidebar__footer-value">
-          Data is currently mocked for demonstration.
-        </span>
-      </footer>
     </div>
   );
 }

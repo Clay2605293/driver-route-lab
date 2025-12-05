@@ -77,7 +77,7 @@ function TripsPanel() {
         cost_metric: "time",
       };
       const res = await client.post("/api/route", payload, {
-        timeout: 120000,
+        timeout: 120000000,
       });
       const data = res.data || {};
       const path_coords = Array.isArray(data.path_coords) ? data.path_coords : [];
