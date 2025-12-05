@@ -1,10 +1,7 @@
 // src/components/sidebar/TripsPanel.jsx
 import React, { useState, useMemo } from "react";
-import SidebarTabs from "./SidebarTabs";
 import TripList from "./trips/TripList";
 import TripDetail from "./trips/TripDetail";
-import ServicesPanel from "./services/ServicesPanel";
-import LabPanel from "./lab/LabPanel";
 import useTrips from "../../hooks/useTrips";
 import client from "../../api/client";
 import { useRoute } from "../../contexts/RouteContext";
@@ -20,9 +17,7 @@ function TripsPanel() {
   } = useTrips();
   const { setRoute } = useRoute();
 
-  const [activeTab, setActiveTab] = useState("trips"); // "trips" | "services" | "lab"
-
-  // Nuevo: modo de vista dentro del tab de Trips (solo afecta mobile)
+  // Vista dentro del panel de trips (solo afecta mobile)
   const [tripViewMode, setTripViewMode] = useState("list"); // "list" | "detail"
 
   const [distanceFilter, setDistanceFilter] = useState("all"); // all | short | medium | long
@@ -33,7 +28,6 @@ function TripsPanel() {
     [trips, selectedTripId]
   );
 
-  // tripObj is the whole trip object from the list
   const handleSelectTrip = async (tripOrId) => {
     const tripObj =
       tripOrId && typeof tripOrId === "object"
@@ -45,7 +39,6 @@ function TripsPanel() {
     setSelectedTripId(tripId);
     setTripViewMode("detail");
 
-    // prepare origin/destination for /api/route
     const origin =
       tripObj?.clientLat != null && tripObj?.clientLon != null
         ? { lat: tripObj.clientLat, lon: tripObj.clientLon }
@@ -63,13 +56,11 @@ function TripsPanel() {
     const algorithm = tripObj?.algorithmUsed ?? preferredAlgorithm ?? "astar";
 
     if (!origin || !destination) {
-      // nothing to fetch for route
       setRoute(null);
       return;
     }
 
     try {
-      // call the route endpoint
       const payload = {
         origin,
         destination,
@@ -92,18 +83,14 @@ function TripsPanel() {
     setTripViewMode("list");
   };
 
-  const renderTripsTab = () => (
+  // Sólo renderizamos el contenido del panel de viajes.
+  return (
     <div className="trips-panel">
-      {/* header igual */}
-
       <div className="trips-panel__body">
-        {/* LISTA */}
         <div
           className={
             "trips-panel__column trips-panel__column--list" +
-            (tripViewMode === "detail"
-              ? " trips-panel__column--hidden"
-              : "")
+            (tripViewMode === "detail" ? " trips-panel__column--hidden" : "")
           }
         >
           <TripList
@@ -117,13 +104,10 @@ function TripsPanel() {
           />
         </div>
 
-        {/* DETALLE */}
         <div
           className={
             "trips-panel__column trips-panel__column--detail" +
-            (tripViewMode === "list"
-              ? " trips-panel__column--hidden"
-              : "")
+            (tripViewMode === "list" ? " trips-panel__column--hidden" : "")
           }
         >
           {selectedTrip ? (
@@ -152,29 +136,6 @@ function TripsPanel() {
             </div>
           )}
         </div>
-      </div>
-    </div>
-  );
-
-  // Tabs principales del sidebar
-  return (
-    <div className="sidebar">
-      <header className="sidebar__header">
-        <div className="sidebar__title-block">
-          <h1 className="sidebar__title">Driver console</h1>
-          <p className="sidebar__subtitle">
-            View pickup and dropoff routes for your clients.
-          </p>
-        </div>
-        <div className="sidebar__tabs-wrapper">
-          <SidebarTabs activeTab={activeTab} onChangeTab={setActiveTab} />
-        </div>
-      </header>
-
-      <div className="sidebar__content">
-        {activeTab === "trips" && renderTripsTab()}
-        {activeTab === "services" && <ServicesPanel />}
-        {activeTab === "lab" && <LabPanel />}
       </div>
     </div>
   );

@@ -24,8 +24,8 @@ export default function useServices() {
     setLoading(true);
     setError(null);
 
-    const driver_lat = opts.driver_lat ?? 20.673;
-    const driver_lon = opts.driver_lon ?? -103.375;
+    const driver_lat = 20.734548769179764;
+    const driver_lon = -103.45442116822734;
     const limitPerType = opts.limitPerType ?? 10;
 
     const types = [

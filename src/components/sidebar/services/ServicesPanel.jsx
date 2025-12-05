@@ -2,11 +2,13 @@
 import React, { useMemo, useState } from "react";
 import ServiceCard from "./ServiceCard";
 import useServices from "../../../hooks/useServices";
+import { useRoute } from "../../../contexts/RouteContext";
+import client from "../../../api/client";
 
 /**
  * ServicesPanel
  *
- * Vista de “On-route services”:
+ * Vista de "On-route services":
  * - Modo LIST: muestra filtros + lista de ServiceCard.
  * - Modo DETAIL: reemplaza la lista por el detalle del servicio seleccionado.
  *
@@ -16,18 +18,114 @@ import useServices from "../../../hooks/useServices";
  */
 function ServicesPanel() {
   const { services, summary } = useServices();
+  const { setRoute } = useRoute();
 
   const [selectedServiceId, setSelectedServiceId] = useState(null);
   const [typeFilter, setTypeFilter] = useState("all"); // all | gas_station | tire_shop | workshop
   const [viewMode, setViewMode] = useState("list"); // "list" | "detail"
+  const [loadingRoute, setLoadingRoute] = useState(false);
+  const [loadingNearest, setLoadingNearest] = useState(false);
+  const [routeError, setRouteError] = useState(null);
+  const [nearestError, setNearestError] = useState(null);
+
+  // Origen fijo (posición del driver)
+  const DRIVER_ORIGIN = {
+    lat: 20.734548769179764,
+    lon: -103.45442116822734,
+  };
 
   const handleSelectService = (serviceId) => {
     setSelectedServiceId(serviceId);
     setViewMode("detail");
+    setRouteError(null); // Limpiar error previo al cambiar de servicio
   };
 
   const handleBackToList = () => {
     setViewMode("list");
+    setRouteError(null);
+  };
+
+  const handlePreviewRoute = async () => {
+    if (!selectedService) return;
+
+    setLoadingRoute(true);
+    setRouteError(null);
+
+    try {
+      const response = await client.post("/api/route", {
+        origin: DRIVER_ORIGIN,
+        destination: {
+          lat: selectedService.lat,
+          lon: selectedService.lon,
+        },
+        cost_metric: "time",
+        algorithm: "astar",
+      });
+
+      const routeData = response.data;
+      
+      // Establecer la ruta en el contexto para que MapView la dibuje
+      setRoute(routeData);
+
+      console.log("Route preview loaded:", {
+        service: selectedService.name,
+        distance: routeData.meta?.distance_m,
+        travelTime: routeData.meta?.travel_time_s,
+        pathPoints: routeData.path_coords?.length,
+      });
+
+    } catch (error) {
+      console.error("Error loading route preview:", error);
+      setRouteError(
+        error.response?.data?.detail || 
+        "Failed to load route. Please try again."
+      );
+    } finally {
+      setLoadingRoute(false);
+    }
+  };
+
+  const handleGetNearest = async () => {
+    if (typeFilter === "all") return;
+
+    setLoadingNearest(true);
+    setNearestError(null);
+
+    try {
+      const response = await client.post("/api/emergency/nearest-service-voronoi", {
+        position: DRIVER_ORIGIN,
+        service_type: typeFilter,
+      });
+
+      const routeData = response.data;
+      
+      // Establecer la ruta en el contexto para que MapView la dibuje
+      setRoute(routeData);
+
+      console.log("Nearest service route loaded:", {
+        serviceType: typeFilter,
+        found: routeData.found,
+        distance: routeData.distance_m,
+        travelTime: routeData.travel_time_s,
+        pathPoints: routeData.path_coords?.length,
+      });
+
+      // Opcional: mostrar mensaje de éxito
+      if (routeData.found) {
+        const distanceKm = (routeData.distance_m / 1000).toFixed(2);
+        const timeMin = Math.round(routeData.travel_time_s / 60);
+        console.log(`Found nearest ${typeFilter}: ${distanceKm} km away (${timeMin} min)`);
+      }
+
+    } catch (error) {
+      console.error("Error finding nearest service:", error);
+      setNearestError(
+        error.response?.data?.detail || 
+        "Failed to find nearest service. Please try again."
+      );
+    } finally {
+      setLoadingNearest(false);
+    }
   };
 
   const filteredServices = useMemo(() => {
@@ -50,6 +148,16 @@ function ServicesPanel() {
     if (minutes == null) return "-";
     if (minutes < 1) return "< 1 min";
     return `${Math.round(minutes)} min`;
+  };
+
+  // Obtener el label del tipo de servicio para el botón
+  const getServiceTypeLabel = (type) => {
+    const labels = {
+      gas_station: "gas station",
+      tire_shop: "tire shop",
+      workshop: "workshop",
+    };
+    return labels[type] || type;
   };
 
   return (
@@ -165,6 +273,29 @@ function ServicesPanel() {
                 Workshops
               </button>
             </div>
+
+            {/* Botón "Get nearest X" - solo visible cuando hay un filtro específico */}
+            {typeFilter !== "all" && (
+              <div className="services-panel__nearest-action">
+                <button
+                  type="button"
+                  className="services-panel__nearest-button"
+                  onClick={handleGetNearest}
+                  disabled={loadingNearest}
+                >
+                  {loadingNearest 
+                    ? "Finding nearest..." 
+                    : `Get nearest ${getServiceTypeLabel(typeFilter)}`
+                  }
+                </button>
+                {nearestError && (
+                  <div className="services-panel__error services-panel__error--compact">
+                    <span className="services-panel__error-icon">⚠️</span>
+                    <span className="services-panel__error-text">{nearestError}</span>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Lista de servicios */}
@@ -269,24 +400,32 @@ function ServicesPanel() {
               </div>
 
               <p className="services-panel__detail-note">
-                Once route planning is connected, selecting{" "}
-                <strong>{selectedService.name}</strong> will highlight the
-                shortest path on the map using the same routing engine as your
-                client trips.
+                Click "Preview route" below to see the optimal path from your
+                current location to <strong>{selectedService.name}</strong> using
+                the A* routing algorithm.
               </p>
+
+              {/* Mensaje de error si falla la carga de ruta */}
+              {routeError && (
+                <div className="services-panel__error">
+                  <span className="services-panel__error-icon">⚠️</span>
+                  <span className="services-panel__error-text">{routeError}</span>
+                </div>
+              )}
 
               <div className="services-panel__detail-actions">
                 <button
                   type="button"
                   className="services-panel__primary-button"
+                  onClick={handlePreviewRoute}
+                  disabled={loadingRoute}
                 >
-                  Preview route to this service
+                  {loadingRoute ? "Loading route..." : "Preview route to this service"}
                 </button>
                 <button
                   type="button"
                   className="services-panel__secondary-button"
                   onClick={() => {
-                    console.debug("ServicesPanel: toggleVoronoi clicked");
                     window.dispatchEvent(new CustomEvent("toggleVoronoi"));
                   }}
                 >

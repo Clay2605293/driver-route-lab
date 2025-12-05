@@ -1825,3 +1825,38 @@
     transition: none !important;
   }
 }
+
+.services-panel__nearest-action {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.services-panel__nearest-button {
+  width: 100%;
+  padding: 10px 16px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.services-panel__nearest-button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.services-panel__nearest-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.services-panel__error--compact {
+  padding: 8px 12px;
+  font-size: 13px;
+}
